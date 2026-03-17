@@ -34,6 +34,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('call-reports', [GoToConnectController::class, 'callReports'])->name('callReports');
         Route::post('call-reports/export', [GoToConnectController::class, 'exportCallReports'])->name('callReports.export');
 
+        // Call Reports Board (multi-tab dashboard)
+        Route::get('call-reports-board', [GoToConnectController::class, 'callReportsBoard'])->name('callReportsBoard');
+
         // Call Events Real-time (Inertia pages)
         Route::get('realtime', [GoToConnectController::class, 'conversationSpaces'])->name('realtime');
         Route::get('realtime/{conversationSpaceId}', [GoToConnectController::class, 'conversationSpaceEvents'])->name('realtime.events');

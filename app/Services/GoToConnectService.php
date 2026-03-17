@@ -544,6 +544,245 @@ class GoToConnectService
         return $response->json();
     }
 
+    // ─── Call Reports API (v1) ─────────────────────────────────────────
+
+    /**
+     * Get user activity summary from Call Reports API.
+     *
+     * @see docs/goto-connect/02-call-reports.md
+     */
+    public function getUserActivity(array $params = []): array
+    {
+        $query = $this->buildCallReportsQuery($params);
+
+        $response = $this->client()->get('/call-reports/v1/reports/user-activity', $query);
+
+        if ($response->failed()) {
+            Log::error('GoTo User Activity failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'error' => true,
+                'status' => $response->status(),
+                'message' => $response->json('message', 'Failed to fetch user activity'),
+                'items' => [],
+            ];
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Get user activity details for a specific user.
+     */
+    public function getUserActivityDetails(string $userId, array $params = []): array
+    {
+        $query = $this->buildCallReportsQuery($params);
+
+        $response = $this->client()->get("/call-reports/v1/reports/user-activity/{$userId}", $query);
+
+        if ($response->failed()) {
+            return [
+                'error' => true,
+                'status' => $response->status(),
+                'message' => $response->json('message', 'Failed to fetch user activity details'),
+                'items' => [],
+            ];
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Get phone number (internal) activity summary.
+     */
+    public function getPhoneNumberActivity(array $params = []): array
+    {
+        $query = $this->buildCallReportsQuery($params);
+
+        $response = $this->client()->get('/call-reports/v1/reports/phone-number-activity', $query);
+
+        if ($response->failed()) {
+            Log::error('GoTo Phone Number Activity failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'error' => true,
+                'status' => $response->status(),
+                'message' => $response->json('message', 'Failed to fetch phone number activity'),
+                'items' => [],
+            ];
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Get caller (external number) activity summary.
+     */
+    public function getCallerActivity(array $params = []): array
+    {
+        $query = $this->buildCallReportsQuery($params);
+
+        $response = $this->client()->get('/call-reports/v1/reports/caller-activity', $query);
+
+        if ($response->failed()) {
+            Log::error('GoTo Caller Activity failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return [
+                'error' => true,
+                'status' => $response->status(),
+                'message' => $response->json('message', 'Failed to fetch caller activity'),
+                'items' => [],
+            ];
+        }
+
+        return $response->json();
+    }
+
+    // ─── Users & Lines ─────────────────────────────────────────────────
+
+    /**
+     * List all users (with their lines) for the account.
+     * Paginated – fetches up to $maxPages pages.
+     *
+     * @see docs/goto-connect/06-users-lines.md
+     */
+    public function getUsers(int $maxPages = 10): array
+    {
+        $allItems = [];
+        $pageMarker = null;
+        $page = 0;
+        $accountKey = $this->getAccountKey();
+
+        do {
+            $query = array_filter([
+                'accountKey' => $accountKey,
+                'pageMarker' => $pageMarker,
+            ], fn ($v) => $v !== null);
+
+            $response = $this->client()->get('/users/v1/users', $query);
+
+            if ($response->failed()) {
+                Log::warning('GoTo Users list failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return ['items' => $allItems];
+            }
+
+            $items = $response->json('items', []);
+            $allItems = array_merge($allItems, $items);
+            $pageMarker = $response->json('nextPageMarker');
+            $page++;
+        } while ($pageMarker && $page < $maxPages);
+
+        return ['items' => $allItems];
+    }
+
+    /**
+     * List all extensions for the account.
+     * Paginated – fetches up to $maxPages pages.
+     *
+     * @see docs/goto-connect/07-voice-admin.md
+     */
+    public function getExtensions(int $maxPages = 10): array
+    {
+        $allItems = [];
+        $pageMarker = null;
+        $page = 0;
+        $accountKey = $this->getAccountKey();
+
+        do {
+            $query = array_filter([
+                'accountKey' => $accountKey,
+                'pageSize' => 50,
+                'pageMarker' => $pageMarker,
+            ], fn ($v) => $v !== null);
+
+            $response = $this->client()->get('/voice-admin/v1/extensions', $query);
+
+            if ($response->failed()) {
+                Log::warning('GoTo Extensions list failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return ['items' => $allItems];
+            }
+
+            $items = $response->json('items', []);
+            $allItems = array_merge($allItems, $items);
+            $pageMarker = $response->json('nextPageMarker');
+            $page++;
+        } while ($pageMarker && $page < $maxPages);
+
+        return ['items' => $allItems];
+    }
+
+    /**
+     * List all phone numbers for the account.
+     *
+     * @see docs/goto-connect/07-voice-admin.md
+     */
+    public function getPhoneNumbers(int $maxPages = 10): array
+    {
+        $allItems = [];
+        $pageMarker = null;
+        $page = 0;
+        $accountKey = $this->getAccountKey();
+
+        do {
+            $query = array_filter([
+                'accountKey' => $accountKey,
+                'pageSize' => 50,
+                'pageMarker' => $pageMarker,
+            ], fn ($v) => $v !== null);
+
+            $response = $this->client()->get('/voice-admin/v1/phone-numbers', $query);
+
+            if ($response->failed()) {
+                Log::warning('GoTo Phone Numbers list failed', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                return ['items' => $allItems];
+            }
+
+            $items = $response->json('items', []);
+            $allItems = array_merge($allItems, $items);
+            $pageMarker = $response->json('nextPageMarker');
+            $page++;
+        } while ($pageMarker && $page < $maxPages);
+
+        return ['items' => $allItems];
+    }
+
+    /**
+     * Build standard query parameters for Call Reports API endpoints.
+     */
+    protected function buildCallReportsQuery(array $params): array
+    {
+        $accountKey = $params['accountKey'] ?? $this->getAccountKey();
+
+        return array_filter([
+            'accountKey' => $accountKey,
+            'startTime' => $params['startTime'] ?? now()->subDays(7)->toIso8601ZuluString(),
+            'endTime' => $params['endTime'] ?? now()->toIso8601ZuluString(),
+            'page' => $params['page'] ?? 0,
+            'pageSize' => $params['pageSize'] ?? 500,
+        ], fn ($v) => $v !== null);
+    }
+
     // ─── Manual Token ──────────────────────────────────────────────────
 
     /**

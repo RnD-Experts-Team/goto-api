@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, BarChart3, FileText, Folder, LayoutGrid, Phone, Radio, Shield } from 'lucide-react';
+import { BookOpen, BarChart3, ClipboardList, FileText, Folder, LayoutGrid, Phone, Radio, Shield } from 'lucide-react';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -44,6 +44,11 @@ const gotoNavItems: NavItem[] = [
         title: 'Call Reports',
         href: '/goto/call-reports',
         icon: Phone,
+    },
+    {
+        title: 'Reports Board',
+        href: '/goto/call-reports-board',
+        icon: ClipboardList,
     },
     {
         title: 'Real-time Events',

@@ -627,6 +627,96 @@ class GoToConnectController extends Controller
         return Excel::download(new CallReportsExport($items, $filters, $stats, $accounts), $filename);
     }
 
+    // ─── Call Reports Board ──────────────────────────────────────────
+
+    /**
+     * Show the Call Reports Board with All Calls, By User, By Internal Number, By External Number tabs.
+     */
+    public function callReportsBoard(Request $request)
+    {
+        $tokenInfo = $this->goto->getTokenInfo();
+
+        $startTime = $request->get('startTime', now()->subDays(7)->toIso8601ZuluString());
+        $endTime = $request->get('endTime', now()->toIso8601ZuluString());
+
+        $allCalls = null;
+        $userActivity = null;
+        $phoneNumberActivity = null;
+        $callerActivity = null;
+        $usersData = ['items' => []];
+        $extensionsData = ['items' => []];
+        $phoneNumbersData = ['items' => []];
+        $error = null;
+
+        if ($tokenInfo['authenticated']) {
+            try {
+                $accountKeys = $request->input('accountKeys', []);
+                if (empty($accountKeys) && $request->input('accountKey')) {
+                    $accountKeys = [$request->input('accountKey')];
+                }
+                $keysForApi = ! empty($accountKeys) ? $accountKeys : $this->goto->getAccountKeys();
+
+                $commonParams = [
+                    'startTime' => $startTime,
+                    'endTime' => $endTime,
+                    'accountKey' => is_array($keysForApi) ? ($keysForApi[0] ?? null) : $keysForApi,
+                ];
+
+                // Fetch all 4 data sources
+                $allCalls = $this->goto->getAllReportSummaries([
+                    'startTime' => $startTime,
+                    'endTime' => $endTime,
+                    'accountKey' => $keysForApi ?: null,
+                ]);
+                if (isset($allCalls['error']) && $allCalls['error']) {
+                    $error = $allCalls['message'];
+                    $allCalls = null;
+                }
+
+                $userActivity = $this->goto->getUserActivity($commonParams);
+                if (isset($userActivity['error']) && $userActivity['error']) {
+                    // Non-fatal: just set to empty
+                    $userActivity = ['items' => []];
+                }
+
+                $phoneNumberActivity = $this->goto->getPhoneNumberActivity($commonParams);
+                if (isset($phoneNumberActivity['error']) && $phoneNumberActivity['error']) {
+                    $phoneNumberActivity = ['items' => []];
+                }
+
+                $callerActivity = $this->goto->getCallerActivity($commonParams);
+                if (isset($callerActivity['error']) && $callerActivity['error']) {
+                    $callerActivity = ['items' => []];
+                }
+
+                // Fetch directory data for participant resolution
+                $usersData = $this->goto->getUsers();
+                $extensionsData = $this->goto->getExtensions();
+                $phoneNumbersData = $this->goto->getPhoneNumbers();
+            } catch (RuntimeException $e) {
+                $error = $e->getMessage();
+            }
+        }
+
+        return Inertia::render('goto/call-reports-board', [
+            'tokenInfo' => $tokenInfo,
+            'allCalls' => $allCalls,
+            'userActivity' => $userActivity,
+            'phoneNumberActivity' => $phoneNumberActivity,
+            'callerActivity' => $callerActivity,
+            'directory' => [
+                'users' => $usersData['items'] ?? [],
+                'extensions' => $extensionsData['items'] ?? [],
+                'phoneNumbers' => $phoneNumbersData['items'] ?? [],
+            ],
+            'error' => $error,
+            'filters' => [
+                'startTime' => $startTime,
+                'endTime' => $endTime,
+            ],
+        ]);
+    }
+
     // ─── API JSON endpoints (for AJAX / testing) ──────────────────────
 
     /**
